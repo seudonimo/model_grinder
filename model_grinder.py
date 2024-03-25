@@ -23,7 +23,6 @@ def setModelAsStatic(model, modelName, output='./'):
     return inferred_model
 
 def getModelAsONNX(jsonModel):
-    import pdb;pdb.set_trace()
     return j2o_convert(json_dict=jsonModel)
 
 def getModelAsJSON(model):
@@ -51,7 +50,9 @@ def grinderModel(model):
             unit_model['graph']['input'] = jsonModel['graph']['valueInfo'][i]
             unit_model['graph']['input'] = jsonModel['graph']['valueInfo'][i+1]
         unit_model['graph']['name'] = 'unit_{}'.format(i)
-        import pdb;pdb.set_trace()
+        unit_model['graph']['node'] = [unit_item]
+        #unit_model['graph']['initializer'] = []
+        #unit_model['graph']['valueInfo'] = []
         onnxModel = getModelAsONNX(unit_model)
         onnx.save(onnxModel, 'unit_model_{}.onnx'.format(i))
 
