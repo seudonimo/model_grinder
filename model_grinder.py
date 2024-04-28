@@ -1,3 +1,4 @@
+import os
 import onnx
 import json
 import argparse
@@ -40,7 +41,7 @@ def getDefaultModel(model: onnx.onnx_ml_pb2.ModelProto) -> dict:
         new_dict[k] = copy.deepcopy(model[k])
     return new_dict
 
-def grinderModel(model: onnx.onnx_ml_pb2.ModelProto):
+def grinderModel(model: onnx.onnx_ml_pb2.ModelProto) -> list:
     
     # Get the model as JSON dictionary
     jsonModel = getModelAsJSON(model)
@@ -54,8 +55,7 @@ def grinderModel(model: onnx.onnx_ml_pb2.ModelProto):
     2. 노드 리스트에서 그 노드의 
     '''
     modelLength = len(jsonModel['graph']['node'])
-    #with open("model_org.json", "w") as f:
-    #        json.dump(jsonModel, f)
+    modelList = list()
     for i in range(modelLength):
         if 'docString' in jsonModel['graph']['node'][i].keys():
             jsonModel['graph']['node'][i]['docString'] = ''
@@ -86,37 +86,56 @@ def grinderModel(model: onnx.onnx_ml_pb2.ModelProto):
                     unit_model['graph']['initializer'].append(item)
 
         unit_model['graph']['valueInfo'] = []
-        #unit_model['graph']['initializer'] = []
-        with open("model_new_{}.json".format(i), "w") as f:
-            json.dump(unit_model, f)
-        onnxModel = getModelAsONNX(unit_model)
-        onnx.save(onnxModel, 'unit_model_{}.onnx'.format(i))
+        modelList.append(unit_model)
+    return modelList
 
+def saveModel(modelList, folderName):
+
+    for idx, unitModel in enumerate(modelList):
+        unitName = '{}_{}_{}'.format(
+            idx,
+            folderName.split('/')[-1],
+            unitModel['graph']['node'][0]['opType']
+        )
+        with open('{}/{}.json'.format(folderName, unitName), 'w') as f:
+            json.dump(unitModel, f)
+        onnxModel = getModelAsONNX(unitModel)
+        onnx.save(onnxModel, '{}/{}.onnx'.format(folderName, unitName))
     return
 
-def main(file_path: str) -> bool:
+def main(file_path: str, args) -> bool:
     
     model = loadModel(file_path)
     modelName = file_path.split('/')[-1].split('.')[-2]
+    
+    # Generate Folder
+    modelName = file_path.split('/')[-1].split('.')[-2]
+    folderName = '{}/{}'.format(args.output_folder, modelName)
+    os.makedirs(folderName, exist_ok=True)
+
     staticModel = setModelAsStatic(model, modelName)
-    grinderModel(staticModel)
+    modelList = grinderModel(staticModel)
+
+    saveModel(modelList, folderName)
     
     return True
     
 if __name__ == "__main__":
-    '''
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-if',
         '--input_file',
         type=str,
-        required=True,
-        default='./relu_conv.onnx',
+        default='./sample/mnist.onnx',
         help='Input ONNX model path. (*.onnx)'
     )
+    parser.add_argument(
+        '-of',
+        '--output_folder',
+        type=str,
+        default='./RESULT',
+        help=''
+    )
     args = parser.parse_args()
-    
-    main(args.input_file)
-    '''
-    main('./sample/gptneox_Opset16.onnx')
+    main(args.input_file, args)
     
