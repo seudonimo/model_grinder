@@ -60,6 +60,8 @@ def grinderModel(model: onnx.onnx_ml_pb2.ModelProto) -> list:
         if 'docString' in jsonModel['graph']['node'][i].keys():
             jsonModel['graph']['node'][i]['docString'] = ''
         unit_item = jsonModel['graph']['node'][i]
+        if unit_item['opType'] == 'Constant':
+            continue
         unit_model = getDefaultModel(jsonModel)
         
         
@@ -97,9 +99,10 @@ def saveModel(modelList, folderName):
             folderName.split('/')[-1],
             unitModel['graph']['node'][0]['opType']
         )
-        with open('{}/{}.json'.format(folderName, unitName), 'w') as f:
-            json.dump(unitModel, f)
+
         onnxModel = getModelAsONNX(unitModel)
+        #onnx.checker.check_model(onnxModel)
+
         onnx.save(onnxModel, '{}/{}.onnx'.format(folderName, unitName))
     return
 
@@ -126,7 +129,7 @@ if __name__ == "__main__":
         '-if',
         '--input_file',
         type=str,
-        default='./sample/mnist.onnx',
+        default='./sample/mobilenetv2-10.onnx',
         help='Input ONNX model path. (*.onnx)'
     )
     parser.add_argument(
